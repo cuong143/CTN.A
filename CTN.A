@@ -45,7 +45,7 @@ end
 -- Toggle CTNA (NoClip)
 button.MouseButton1Click:Connect(function()
     noclip = not noclip
-    button.Text = "CNA: " .. (noclip and "ON" or "OFF")
+    button.Text = "CTNA: " .. (noclip and "ON" or "OFF")
 end)
 
 -- CTNA logic (skip HumanoidRootPart)
