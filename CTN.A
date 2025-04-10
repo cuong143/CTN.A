@@ -13,7 +13,7 @@ local camera = workspace.CurrentCamera
 StarterGui:SetCore("SendNotification", {
     Title = "Code by CuongHub",
     Text = "on Roblox",
-    Duration = 10
+    Duration = 3
 })
 
 local screenGui = Instance.new("ScreenGui")
@@ -22,7 +22,7 @@ screenGui.Parent = game:GetService("CoreGui")
 
 local button = Instance.new("TextButton")
 button.Name = "Monster Lock: ON/OFF"
-button.Size = UDim2.new(0, 130, 0, 40)
+button.Size = UDim2.new(0, 150, 0, 50)
 button.Position = UDim2.new(0.5, -75, 0.9, -25)
 button.BackgroundColor3 = Color3.new(0, 0, 0)
 button.TextColor3 = Color3.new(1, 1, 1)
@@ -169,8 +169,11 @@ button.MouseButton1Click:Connect(function()
         end
     end
 end)local noclip = false
+local espEnabled = false
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 -- GUI Setup
 local gui = Instance.new("ScreenGui")
@@ -179,27 +182,50 @@ gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 130, 0, 60)
+frame.Size = UDim2.new(0, 130, 0, 90)
 frame.Position = UDim2.new(0.4, 0, 0.3, 0)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 
+-- ESP Button
+local espButton = Instance.new("TextButton", frame)
+espButton.Size = UDim2.new(1, 0, 0.33, 0)
+espButton.Position = UDim2.new(0, 0, 0, 0)
+espButton.Text = "ESP: OFF"
+espButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+espButton.BackgroundColor3 = Color3.fromRGB(0, 100, 100)
+
+-- CTNA (NoClip) Button
 local button = Instance.new("TextButton", frame)
 button.Size = UDim2.new(1, 0, 0.33, 0)
-button.Position = UDim2.new(0, 0, 0, 0)
+button.Position = UDim2.new(0, 0, 0.33, 0)
 button.Text = "CTNA: OFF"
 button.TextColor3 = Color3.fromRGB(255, 255, 255)
 button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 
--- Tắt GUI
-local closeButton = Instance.new("TextButton", frame)
-closeButton.Size = UDim2.new(1, 0, 0.33, 0)
-closeButton.Position = UDim2.new(0, 0, 0.33, 0)
-closeButton.Text = "Tắt GUI"
-closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeButton.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
+-- Thu gọn GUI
+local minimizeButton = Instance.new("TextButton", frame)
+minimizeButton.Size = UDim2.new(1, 0, 0.33, 0)
+minimizeButton.Position = UDim2.new(0, 0, 0.66, 0)
+minimizeButton.Text = "Thu gọn"
+minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 
-closeButton.MouseButton1Click:Connect(function()
-    gui:Destroy()
+local miniFrame = Instance.new("TextButton")
+miniFrame.Size = UDim2.new(0, 20, 0, 20)
+miniFrame.Position = UDim2.new(0.01, 0, 0.01, 0)
+miniFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+miniFrame.Text = ""
+miniFrame.Visible = false
+miniFrame.Parent = gui
+
+minimizeButton.MouseButton1Click:Connect(function()
+    frame.Visible = false
+    miniFrame.Visible = true
+end)
+
+miniFrame.MouseButton1Click:Connect(function()
+    frame.Visible = true
+    miniFrame.Visible = false
 end)
 
 -- Nút di chuyển GUI
@@ -214,7 +240,7 @@ local offsets = {
 for i = 1, 4 do
     local dirBtn = Instance.new("TextButton", frame)
     dirBtn.Size = UDim2.new(0.25, 0, 0.34, 0)
-    dirBtn.Position = UDim2.new((i - 1) * 0.25, 0, 0.66, 0)
+    dirBtn.Position = UDim2.new((i - 1) * 0.25, 0, 1, 0)
     dirBtn.Text = directions[i]
     dirBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     dirBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -223,6 +249,7 @@ for i = 1, 4 do
         local pos = frame.Position
         local offset = offsets[i]
         frame.Position = UDim2.new(pos.X.Scale, pos.X.Offset + offset.X, pos.Y.Scale, pos.Y.Offset + offset.Y)
+        miniFrame.Position = frame.Position
     end)
 end
 
@@ -233,7 +260,7 @@ button.MouseButton1Click:Connect(function()
 end)
 
 -- NoClip logic
-game:GetService("RunService").Stepped:Connect(function()
+RunService.Stepped:Connect(function()
     if noclip and char then
         for _, part in pairs(char:GetDescendants()) do
             if part:IsA("BasePart") and part.CanCollide and part.Name ~= "HumanoidRootPart" then
@@ -242,3 +269,101 @@ game:GetService("RunService").Stepped:Connect(function()
         end
     end
 end)
+
+-- ESP logic
+local function createESP(target, isPlayer)
+    if target:FindFirstChild("HumanoidRootPart") and not target:FindFirstChild("CTNA_ESP") then
+        local esp = Instance.new("Highlight")
+        esp.Name = "CTNA_ESP"
+        esp.Adornee = target
+        esp.FillColor = isPlayer and Color3.fromRGB(0, 255, 255) or Color3.fromRGB(255, 0, 0)
+        esp.FillTransparency = 0.4
+        esp.OutlineColor = Color3.new(1, 1, 1)
+        esp.OutlineTransparency = 0
+        esp.Parent = target
+    end
+end
+
+local function removeAllESP()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        local esp = obj:FindFirstChild("CTNA_ESP")
+        if esp then
+            esp:Destroy()
+        end
+    end
+end
+
+local function scanTargets()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and not obj:FindFirstChild("CTNA_ESP") then
+            local humanoid = obj:FindFirstChildWhichIsA("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                local isPlayer = false
+                for _, p in ipairs(game.Players:GetPlayers()) do
+                    if p.Character == obj then
+                        isPlayer = true
+                        break
+                    end
+                end
+                createESP(obj, isPlayer)
+            end
+        end
+    end
+end
+
+espButton.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    espButton.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
+    if not espEnabled then
+        removeAllESP()
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if espEnabled then
+        pcall(scanTargets)
+    end
+end)
+
+-- Drag Function
+local function makeDraggable(guiElement)
+    local dragging, dragInput, dragStart, startPos
+
+    guiElement.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = guiElement.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    guiElement.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            guiElement.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+            if guiElement == frame then
+                miniFrame.Position = guiElement.Position
+            end
+        end
+    end)
+end
+
+makeDraggable(frame)
+makeDraggable(miniFrame)
