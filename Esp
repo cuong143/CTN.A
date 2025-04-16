@@ -1,0 +1,195 @@
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Cấu hình
+local Settings = {
+    ItemESP = {
+        Enabled = true,
+        Color = Color3.fromRGB(0, 255, 0),
+        FillTransparency = 0.3,
+        OutlineTransparency = 0,
+        ShowName = true,
+        ShowDistance = true
+    },
+    MonsterESP = {
+        Enabled = true,
+        Color = Color3.fromRGB(255, 0, 0),
+        FillTransparency = 0.4,
+        OutlineTransparency = 0.1,
+        ShowDistance = true,
+        ShowName = true
+    }
+}
+
+-- Tạo GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ESPGui"
+screenGui.Parent = CoreGui
+screenGui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 150)
+frame.Position = UDim2.new(0.5, -100, 0.5, -75)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 2
+frame.Parent = screenGui
+
+-- Kéo thả
+local dragging, dragStart, startPos
+local function updateInput(input)
+    local delta = input.Position - dragStart
+    frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        if dragging then
+            updateInput(input)
+        end
+    end
+end)
+
+-- Nút bật/tắt
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 180, 0, 40)
+toggleButton.Position = UDim2.new(0, 10, 0, 10)
+toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+toggleButton.Text = "Toggle ESP: ON"
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Parent = frame
+
+-- Quản lý ESP
+local itemESPToggles = {}
+local monsterESPToggles = {}
+local espEnabled = true
+
+local function CreateESP(instance, color, fillTransparency, outlineTransparency, showName, showDistance)
+    local highlight = Instance.new("Highlight")
+    highlight.Adornee = instance
+    highlight.FillColor = color
+    highlight.OutlineColor = color
+    highlight.FillTransparency = fillTransparency
+    highlight.OutlineTransparency = outlineTransparency
+    highlight.Parent = instance
+    highlight.Enabled = true
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Adornee = instance
+    billboard.Size = UDim2.fromOffset(200, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.ResetOnSpawn = false
+    billboard.Enabled = true
+    billboard.Parent = CoreGui
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = color
+    label.TextSize = 14
+    label.Font = Enum.Font.SourceSansBold
+    label.TextStrokeTransparency = 0.5
+    label.Parent = billboard
+
+    local connection
+    local function updateESP()
+        if not instance or not instance.Parent then
+            highlight:Destroy()
+            billboard:Destroy()
+            if connection then connection:Disconnect() end
+            return
+        end
+
+        local info = {}
+        if showName then table.insert(info, instance.Name) end
+        if showDistance then
+            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                local dist = (root.Position - instance:GetPivot().Position).Magnitude
+                table.insert(info, string.format("[%dm]", math.floor(dist)))
+            end
+        end
+        label.Text = table.concat(info, " ")
+    end
+
+    connection = RunService.RenderStepped:Connect(updateESP)
+
+    return function(state)
+        highlight.Enabled = state
+        billboard.Enabled = state
+        if state then
+            if not connection or not connection.Connected then
+                connection = RunService.RenderStepped:Connect(updateESP)
+            end
+        else
+            if connection then connection:Disconnect() end
+        end
+    end
+end
+
+local function SetupItemESP()
+    local runtimeItems = workspace:FindFirstChild("RuntimeItems")
+    if not runtimeItems then return end
+    for _, item in pairs(runtimeItems:GetChildren()) do
+        if item:IsA("Model") then
+            itemESPToggles[item] = CreateESP(item, Settings.ItemESP.Color, Settings.ItemESP.FillTransparency, Settings.ItemESP.OutlineTransparency, Settings.ItemESP.ShowName, Settings.ItemESP.ShowDistance)
+        end
+    end
+    runtimeItems.ChildAdded:Connect(function(child)
+        if child:IsA("Model") then
+            itemESPToggles[child] = CreateESP(child, Settings.ItemESP.Color, Settings.ItemESP.FillTransparency, Settings.ItemESP.OutlineTransparency, Settings.ItemESP.ShowName, Settings.ItemESP.ShowDistance)
+        end
+    end)
+end
+
+local function SetupMonsterESP()
+    for _, npc in pairs(workspace:GetDescendants()) do
+        if npc:IsA("Model") and npc:FindFirstChildOfClass("Humanoid") and not Players:GetPlayerFromCharacter(npc) then
+            monsterESPToggles[npc] = CreateESP(npc, Settings.MonsterESP.Color, Settings.MonsterESP.FillTransparency, Settings.MonsterESP.OutlineTransparency, Settings.MonsterESP.ShowName, Settings.MonsterESP.ShowDistance)
+        end
+    end
+    workspace.DescendantAdded:Connect(function(desc)
+        if desc:IsA("Model") and desc:FindFirstChildOfClass("Humanoid") and not Players:GetPlayerFromCharacter(desc) then
+            task.wait(0.5)
+            monsterESPToggles[desc] = CreateESP(desc, Settings.MonsterESP.Color, Settings.MonsterESP.FillTransparency, Settings.MonsterESP.OutlineTransparency, Settings.MonsterESP.ShowName, Settings.MonsterESP.ShowDistance)
+        end
+    end)
+end
+
+-- Logic nút bật/tắt
+toggleButton.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    toggleButton.Text = "Toggle ESP: " .. (espEnabled and "ON" or "OFF")
+    
+    for _, toggle in pairs(itemESPToggles) do
+        toggle(espEnabled)
+    end
+    
+    for _, toggle in pairs(monsterESPToggles) do
+        toggle(espEnabled)
+    end
+end)
+
+-- Khởi chạy
+if Settings.ItemESP.Enabled then
+    SetupItemESP()
+end
+if Settings.MonsterESP.Enabled then
+    SetupMonsterESP()
+end
