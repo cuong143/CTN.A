@@ -1,0 +1,955 @@
+print("MR.N -- Developer")
+
+-- Dịch vụ cần thiết
+
+local Players = game:GetService("Players")
+
+local UserInputService = game:GetService("UserInputService")
+
+local HttpService = game:GetService("HttpService")
+
+local TweenService = game:GetService("TweenService")
+
+local LocalizationService = game:GetService("LocalizationService")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Biến lưu trữ countryCode để tránh gọi API nhiều lần
+
+local cachedCountryCode = nil
+
+-- Hàm lấy quốc gia của người chơi với timeout và API dự phòng
+
+local function getPlayerCountry()
+
+    if cachedCountryCode then
+
+        return cachedCountryCode
+
+    end
+
+    local function tryApi(url, field)
+
+        local success, result = pcall(function()
+
+            local response
+
+            local co = coroutine.create(function()
+
+                response = HttpService:GetAsync(url)
+
+            end)
+
+            coroutine.resume(co)
+
+            local elapsed = 0
+
+            local timeout = 3
+
+            while coroutine.status(co) ~= "dead" and elapsed < timeout do
+
+                task.wait(0.1)
+
+                elapsed += 0.1
+
+            end
+
+            if coroutine.status(co) ~= "dead" then
+
+                return nil
+
+            end
+
+            local data = HttpService:JSONDecode(response)
+
+            return data[field]
+
+        end)
+
+        return success and result or nil
+
+    end
+
+    local countryCode = tryApi("http://ip-api.com/json", "countryCode")
+
+    if countryCode then
+
+        cachedCountryCode = countryCode
+
+        return countryCode
+
+    end
+
+    countryCode = tryApi("https://ipinfo.io/json", "country")
+
+    if countryCode then
+
+        cachedCountryCode = countryCode
+
+        return countryCode
+
+    end
+
+    local success, locale = pcall(function()
+
+        return LocalizationService:GetCountryRegionForPlayerAsync(LocalPlayer)
+
+    end)
+
+    if success and locale == "VN" then
+
+        cachedCountryCode = "VN"
+
+        return "VN"
+
+    end
+
+    warn("Không thể lấy thông tin quốc gia")
+
+    cachedCountryCode = "Unknown"
+
+    return nil
+
+end
+
+-- Hàm tìm ghế điều khiển trên tàu
+
+local function findConductorSeat()
+
+    local train = workspace:FindFirstChild("Train")
+
+    if not train then
+
+        return nil, "Không tìm thấy Train trong workspace", "Train not found in workspace"
+
+    end
+
+    local trainControls = train:FindFirstChild("TrainControls")
+
+    if not trainControls then
+
+        return nil, "Không tìm thấy TrainControls trong Train", "TrainControls not found in Train"
+
+    end
+
+    local conductorSeat = trainControls:FindFirstChild("ConductorSeat")
+
+    if not conductorSeat then
+
+        return nil, "Không tìm thấy ConductorSeat trong TrainControls", "ConductorSeat not found in TrainControls"
+
+    end
+
+    local vehicleSeat = conductorSeat:FindFirstChild("VehicleSeat")
+
+    if not vehicleSeat then
+
+        return nil, "Không tìm thấy VehicleSeat trong ConductorSeat", "VehicleSeat not found in ConductorSeat"
+
+    end
+
+    return vehicleSeat, nil, nil
+
+end
+
+-- Hàm khiến nhân vật ngồi vào ghế
+
+local function sitInConductorSeat(isVietnamese)
+
+    local character = LocalPlayer.Character
+
+    if not character then
+
+        return false, "Không tìm thấy nhân vật của người chơi", "Player character not found"
+
+    end
+
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+
+    local humanoid = character:FindFirstChild("Humanoid")
+
+    if not hrp or not humanoid then
+
+        return false, "Không tìm thấy HumanoidRootPart hoặc Humanoid", "HumanoidRootPart or Humanoid not found"
+
+    end
+
+    local trainSeat, errorVN, errorEN = findConductorSeat()
+
+    if not trainSeat then
+
+        return false, errorVN, errorEN
+
+    end
+
+    hrp.CFrame = trainSeat.CFrame + Vector3.new(0, 3, 0)
+
+    task.wait(0.1)
+
+    trainSeat:Sit(humanoid)
+
+    return true, "Đã ngồi vào ghế điều khiển thành công!", "Successfully sat in conductor seat!"
+
+end
+
+-- Hàm thực thi script dịch chuyển đến lâu đài
+
+local function teleportToCastle()
+
+    local success, result = pcall(function()
+
+        local scriptContent = game:HttpGet("https://raw.githubusercontent.com/ringtaa/castletpfast.github.io/refs/heads/main/FASTCASTLE.lua")
+
+        local func = loadstring(scriptContent)
+
+        if func then
+
+            func()
+
+            return true, "Đã dịch chuyển đến lâu đài thành công!", "Successfully teleported to castle!"
+
+        else
+
+            return false, "Không thể thực thi script dịch chuyển đến lâu đài", "Failed to execute castle teleport script"
+
+        end
+
+    end)
+
+    if not success then
+
+        return false, "Lỗi khi tải script lâu đài: " .. tostring(result), "Error loading castle script: " .. tostring(result)
+
+    end
+
+    return result
+
+end
+
+-- Hàm thực thi script dịch chuyển đến phòng thí nghiệm Tesla
+
+local function teleportToTeslaLab()
+
+    local success, result = pcall(function()
+
+        local scriptContent = game:HttpGet("https://raw.githubusercontent.com/ringtaa/tptotesla.github.io/refs/heads/main/Tptotesla.lua")
+
+        local func = loadstring(scriptContent)
+
+        if func then
+
+            func()
+
+            return true, "Đã dịch chuyển đến phòng thí nghiệm Tesla thành công!", "Successfully teleported to Tesla lab!"
+
+        else
+
+            return false, "Không thể thực thi script dịch chuyển đến Tesla", "Failed to execute Tesla teleport script"
+
+        end
+
+    end)
+
+    if not success then
+
+        return false, "Lỗi khi tải script Tesla: " .. tostring(result), "Error loading Tesla script: " .. tostring(result)
+
+    end
+
+    return result
+
+end
+
+-- Hàm thực thi script dịch chuyển đến Fort
+
+local function teleportToFort()
+
+    local success, result = pcall(function()
+
+        local scriptContent = game:HttpGet("https://raw.githubusercontent.com/ringtaa/Tpfort.github.io/refs/heads/main/Tpfort.lua")
+
+        local func = loadstring(scriptContent)
+
+        if func then
+
+            func()
+
+            return true, "Đã dịch chuyển đến Fort thành công!", "Successfully teleported to Fort!"
+
+        else
+
+            return false, "Không thể thực thi script dịch chuyển đến Fort", "Failed to execute Fort teleport script"
+
+        end
+
+    end)
+
+    if not success then
+
+        return false, "Lỗi khi tải script Fort: " .. tostring(result), "Error loading Fort script: " .. tostring(result)
+
+    end
+
+    return result
+
+end
+
+-- Hàm thực thi script dịch chuyển đến Sterling Town
+
+local function teleportToSterlingTown()
+
+    local success, result = pcall(function()
+
+        local scriptContent = game:HttpGet("https://raw.githubusercontent.com/ringtaa/sterlingnotifcation.github.io/refs/heads/main/Sterling.lua")
+
+        local func = loadstring(scriptContent)
+
+        if func then
+
+            func()
+
+            return true, "Đã dịch chuyển đến Sterling Town thành công!", "Successfully teleported to Sterling Town!"
+
+        else
+
+            return false, "Không thể thực thi script dịch chuyển đến Sterling Town", "Failed to execute Sterling Town teleport script"
+
+        end
+
+    end)
+
+    if not success then
+
+        return false, "Lỗi khi tải script Sterling Town: " .. tostring(result), "Error loading Sterling Town script: " .. tostring(result)
+
+    end
+
+    return result
+
+end
+
+-- Hàm thực thi script dịch chuyển đến End
+
+local function teleportToEnd()
+
+    local success, result = pcall(function()
+
+        local scriptContent = game:HttpGet("https://raw.githubusercontent.com/ringtaa/newpacifisct/refs/heads/main/newpacifisct.lua")
+
+        local func = loadstring(scriptContent)
+
+        if func then
+
+            func()
+
+            return true, "Đã dịch chuyển đến End thành công!", "Successfully teleported to End!"
+
+        else
+
+            return false, "Không thể thực thi script dịch chuyển đến End", "Failed to execute End teleport script"
+
+        end
+
+    end)
+
+    if not success then
+
+        return false, "Lỗi khi tải script End: " .. tostring(result), "Error loading End script: " .. tostring(result)
+
+    end
+
+    return result
+
+end
+
+-- Tạo UI
+
+local function createUI()
+
+    local isVietnamese = (getPlayerCountry() == "VN")
+
+    local screenGui = Instance.new("ScreenGui")
+
+    screenGui.Name = "TrainControlUI"
+
+    screenGui.Parent = LocalPlayer.PlayerGui
+
+    screenGui.ResetOnSpawn = false
+
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    screenGui.DisplayOrder = 1000
+
+    local frame = Instance.new("Frame")
+
+    frame.Size = UDim2.new(0, 200, 0, 430)
+
+    frame.Position = UDim2.new(0.5, -100, 0.5, -215)
+
+    frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+
+    frame.BorderSizePixel = 0
+
+    frame.Visible = false
+
+    frame.ZIndex = 1000
+
+    frame.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+
+    corner.CornerRadius = UDim.new(0, 10)
+
+    corner.Parent = frame
+
+    -- Tạo Frame cho nội dung Tab 1
+
+    local tab1Content = Instance.new("Frame")
+
+    tab1Content.Size = UDim2.new(1, 0, 1, -100)
+
+    tab1Content.Position = UDim2.new(0, 0, 0, 0)
+
+    tab1Content.BackgroundTransparency = 1
+
+    tab1Content.ZIndex = 1000
+
+    tab1Content.Parent = frame
+
+    tab1Content.Visible = true
+
+    -- Tạo Frame cho nội dung Tab 2
+
+    local tab2Content = Instance.new("Frame")
+
+    tab2Content.Size = UDim2.new(1, 0, 1, -100)
+
+    tab2Content.Position = UDim2.new(0, 0, 0, 0)
+
+    tab2Content.BackgroundTransparency = 1
+
+    tab2Content.ZIndex = 1000
+
+    tab2Content.Parent = frame
+
+    tab2Content.Visible = false
+
+    -- Tạo nút ngồi (Tab 1)
+
+    local sitButton = Instance.new("TextButton")
+
+    sitButton.Size = UDim2.new(0, 180, 0, 50)
+
+    sitButton.Position = UDim2.new(0.5, -90, 0, 10)
+
+    sitButton.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+
+    sitButton.Text = isVietnamese and "Ngồi vào ghế điều khiển" or "Sit in Conductor Seat"
+
+    sitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    sitButton.TextScaled = true
+
+    sitButton.ZIndex = 1001
+
+    sitButton.Parent = tab1Content
+
+    local buttonCorner = Instance.new("UICorner")
+
+    buttonCorner.CornerRadius = UDim.new(0, 8)
+
+    buttonCorner.Parent = sitButton
+
+    -- Tạo nút dịch chuyển đến lâu đài (Tab 1)
+
+    local castleButton = Instance.new("TextButton")
+
+    castleButton.Size = UDim2.new(0, 180, 0, 50)
+
+    castleButton.Position = UDim2.new(0.5, -90, 0, 70)
+
+    castleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+
+    castleButton.Text = isVietnamese and "Dịch Chuyển Đến Lâu Đài" or "Teleport to Castle"
+
+    castleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    castleButton.TextScaled = true
+
+    castleButton.ZIndex = 1001
+
+    castleButton.Parent = tab1Content
+
+    local castleButtonCorner = Instance.new("UICorner")
+
+    castleButtonCorner.CornerRadius = UDim.new(0, 8)
+
+    castleButtonCorner.Parent = castleButton
+
+    -- Tạo nút dịch chuyển đến phòng thí nghiệm Tesla (Tab 1)
+
+    local teslaButton = Instance.new("TextButton")
+
+    teslaButton.Size = UDim2.new(0, 180, 0, 50)
+
+    teslaButton.Position = UDim2.new(0.5, -90, 0, 130)
+
+    teslaButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+
+    teslaButton.Text = isVietnamese and "Dịch Chuyển Đến Tesla Lab" or "Teleport to Tesla Lab"
+
+    teslaButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    teslaButton.TextScaled = true
+
+    teslaButton.ZIndex = 1001
+
+    teslaButton.Parent = tab1Content
+
+    local teslaButtonCorner = Instance.new("UICorner")
+
+    teslaButtonCorner.CornerRadius = UDim.new(0, 8)
+
+    teslaButtonCorner.Parent = teslaButton
+
+    -- Tạo nút dịch chuyển đến Fort (Tab 1)
+
+    local fortButton = Instance.new("TextButton")
+
+    fortButton.Size = UDim2.new(0, 180, 0, 50)
+
+    fortButton.Position = UDim2.new(0.5, -90, 0, 190)
+
+    fortButton.BackgroundColor3 = Color3.fromRGB(200, 200, 50)
+
+    fortButton.Text = isVietnamese and "Dịch Chuyển Đến Fort" or "Teleport to Fort"
+
+    fortButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    fortButton.TextScaled = true
+
+    sitButton.ZIndex = 1001
+
+    fortButton.Parent = tab1Content
+
+    local fortButtonCorner = Instance.new("UICorner")
+
+    fortButtonCorner.CornerRadius = UDim.new(0, 8)
+
+    fortButtonCorner.Parent = fortButton
+
+    -- Tạo nút dịch chuyển đến Sterling Town (Tab 1)
+
+    local sterlingButton = Instance.new("TextButton")
+
+    sterlingButton.Size = UDim2.new(0, 180, 0, 50)
+
+    sterlingButton.Position = UDim2.new(0.5, -90, 0, 250)
+
+    sterlingButton.BackgroundColor3 = Color3.fromRGB(150, 50, 200)
+
+    sterlingButton.Text = isVietnamese and "Dịch Chuyển Đến Sterling Town" or "Teleport to Sterling Town"
+
+    sterlingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    sterlingButton.TextScaled = true
+
+    sterlingButton.ZIndex = 1001
+
+    sterlingButton.Parent = tab1Content
+
+    local sterlingButtonCorner = Instance.new("UICorner")
+
+    sterlingButtonCorner.CornerRadius = UDim.new(0, 8)
+
+    sterlingButtonCorner.Parent = sterlingButton
+
+    -- Tạo nút dịch chuyển đến End (Tab 2)
+
+    local endButton = Instance.new("TextButton")
+
+    endButton.Size = UDim2.new(0, 180, 0, 50)
+
+    endButton.Position = UDim2.new(0.5, -90, 0, 10)
+
+    endButton.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+
+    endButton.Text = isVietnamese and "Dịch Chuyển Đến End" or "Teleport to End"
+
+    endButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    endButton.TextScaled = true
+
+    endButton.ZIndex = 1001
+
+    endButton.Parent = tab2Content
+
+    local endButtonCorner = Instance.new("UICorner")
+
+    endButtonCorner.CornerRadius = UDim.new(0, 8)
+
+    endButtonCorner.Parent = endButton
+
+    -- Tạo nút Tab 1
+
+    local tab1Button = Instance.new("TextButton")
+
+    tab1Button.Size = UDim2.new(0, 80, 0, 30)
+
+    tab1Button.Position = UDim2.new(0.5, -90, 0, 310)
+
+    tab1Button.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+
+    tab1Button.Text = "Tab 1"
+
+    tab1Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    tab1Button.TextScaled = true
+
+    tab1Button.ZIndex = 1001
+
+    tab1Button.Parent = frame
+
+    local tab1Corner = Instance.new("UICorner")
+
+    tab1Corner.CornerRadius = UDim.new(0, 8)
+
+    tab1Corner.Parent = tab1Button
+
+    -- Tạo nút Tab 2
+
+    local tab2Button = Instance.new("TextButton")
+
+    tab2Button.Size = UDim2.new(0, 80, 0, 30)
+
+    tab2Button.Position = UDim2.new(0.5, -10, 0, 310)
+
+    tab2Button.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+
+    tab2Button.Text = "Tab 2"
+
+    tab2Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    tab2Button.TextScaled = true
+
+    tab2Button.ZIndex = 1001
+
+    tab2Button.Parent = frame
+
+    local tab2Corner = Instance.new("UICorner")
+
+    tab2Corner.CornerRadius = UDim.new(0, 8)
+
+    tab2Corner.Parent = tab2Button
+
+    -- Tạo nhãn trạng thái
+
+    local statusLabel = Instance.new("TextLabel")
+
+    statusLabel.Size = UDim2.new(0, 180, 0, 50)
+
+    statusLabel.Position = UDim2.new(0.5, -90, 0, 360)
+
+    statusLabel.BackgroundTransparency = 1
+
+    statusLabel.Text = isVietnamese and "Nhấn nút để thực hiện hành động!" or "Click a button to perform an action!"
+
+    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    statusLabel.TextScaled = true
+
+    statusLabel.TextWrapped = true
+
+    statusLabel.ZIndex = 1001
+
+    statusLabel.Parent = frame
+
+    -- Tạo nút đóng UI
+
+    local closeButton = Instance.new("TextButton")
+
+    closeButton.Size = UDim2.new(0, 30, 0, 30)
+
+    closeButton.Position = UDim2.new(1, -40, 0, 10)
+
+    closeButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+
+    closeButton.Text = "X"
+
+    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    closeButton.TextScaled = true
+
+    closeButton.ZIndex = 1001
+
+    closeButton.Parent = frame
+
+    local closeCorner = Instance.new("UICorner")
+
+    closeCorner.CornerRadius = UDim.new(0, 8)
+
+    closeCorner.Parent = closeButton
+
+    -- Tạo logo (nút hiển thị/ẩn UI)
+
+    local logoButton = Instance.new("TextButton")
+
+    logoButton.Size = UDim2.new(0, 50, 0, 50)
+
+    logoButton.Position = UDim2.new(0, 10, 0, 10)
+
+    logoButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+
+    logoButton.Text = "C"
+
+    logoButton.TextColor3 = Color3.fromRGB(205, 55, 205)
+
+    logoButton.TextScaled = false
+
+    logoButton.TextSize = 24
+
+    logoButton.ZIndex = 1000
+
+    logoButton.Parent = screenGui
+
+    local logoCorner = Instance.new("UICorner")
+
+    logoCorner.CornerRadius = UDim.new(0, 8)
+
+    logoCorner.Parent = logoButton
+
+    -- Xử lý sự kiện nút Tab
+
+    tab1Button.MouseButton1Click:Connect(function()
+
+        tab1Content.Visible = true
+
+        tab2Content.Visible = false
+
+        tab1Button.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+
+        tab2Button.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+
+    end)
+
+    tab2Button.MouseButton1Click:Connect(function()
+
+        tab1Content.Visible = false
+
+        tab2Content.Visible = true
+
+        tab1Button.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+
+        tab2Button.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+
+    end)
+
+    -- Xử lý sự kiện các nút
+
+    sitButton.MouseButton1Click:Connect(function()
+
+        local success, messageVN, messageEN = sitInConductorSeat(isVietnamese)
+
+        statusLabel.Text = isVietnamese and messageVN or messageEN
+
+        statusLabel.TextColor3 = success and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+
+    end)
+
+    castleButton.MouseButton1Click:Connect(function()
+
+        local success, messageVN, messageEN = teleportToCastle()
+
+        statusLabel.Text = isVietnamese and messageVN or messageEN
+
+        statusLabel.TextColor3 = success and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+
+    end)
+
+    teslaButton.MouseButton1Click:Connect(function()
+
+        local success, messageVN, messageEN = teleportToTeslaLab()
+
+        statusLabel.Text = isVietnamese and messageVN or messageEN
+
+        statusLabel.TextColor3 = success and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+
+    end)
+
+    fortButton.MouseButton1Click:Connect(function()
+
+        local success, messageVN, messageEN = teleportToFort()
+
+        statusLabel.Text = isVietnamese and messageVN or messageEN
+
+        statusLabel.TextColor3 = success and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+
+    end)
+
+    sterlingButton.MouseButton1Click:Connect(function()
+
+        local success, messageVN, messageEN = teleportToSterlingTown()
+
+        statusLabel.Text = isVietnamese and messageVN or messageEN
+
+        statusLabel.TextColor3 = success and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+
+    end)
+
+    endButton.MouseButton1Click:Connect(function()
+
+        local success, messageVN, messageEN = teleportToEnd()
+
+        statusLabel.Text = isVietnamese and messageVN or messageEN
+
+        statusLabel.TextColor3 = success and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+
+    end)
+
+    closeButton.MouseButton1Click:Connect(function()
+
+        screenGui:Destroy()
+
+    end)
+
+    logoButton.MouseButton1Click:Connect(function()
+
+        frame.Visible = not frame.Visible
+
+    end)
+
+    -- Xử lý kéo thả Frame
+
+    local isDraggingFrame = false
+
+    local frameDragStart = nil
+
+    local frameStartPos = nil
+
+    local dragFactor = 2.0
+
+    frame.InputBegan:Connect(function(input)
+
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+
+            isDraggingFrame = true
+
+            frameDragStart = input.Position
+
+            frameStartPos = frame.Position
+
+            TweenService:Create(frame, TweenInfo.new(0), {Position = frame.Position}):Play()
+
+        end
+
+    end)
+
+    frame.InputChanged:Connect(function(input)
+
+        if isDraggingFrame and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+
+            local delta = (input.Position - frameDragStart) * dragFactor
+
+            if math.abs(delta.X) < 1 and math.abs(delta.Y) < 1 then
+
+                return
+
+            end
+
+            local newPos = UDim2.new(
+
+                frameStartPos.X.Scale,
+
+                frameStartPos.X.Offset + delta.X,
+
+                frameStartPos.Y.Scale,
+
+                frameStartPos.Y.Offset + delta.Y
+
+            )
+
+            TweenService:Create(frame, TweenInfo.new(0.03), {Position = newPos}):Play()
+
+        end
+
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+
+            isDraggingFrame = false
+
+        end
+
+    end)
+
+    -- Xử lý kéo thả Logo
+
+    local isDraggingLogo = false
+
+    local logoDragStart = nil
+
+    local logoStartPos = nil
+
+    logoButton.InputBegan:Connect(function(input)
+
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+
+            isDraggingLogo = true
+
+            logoDragStart = input.Position
+
+            logoStartPos = logoButton.Position
+
+            TweenService:Create(logoButton, TweenInfo.new(0), {Position = logoButton.Position}):Play()
+
+        end
+
+    end)
+
+    logoButton.InputChanged:Connect(function(input)
+
+        if isDraggingLogo and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+
+            local delta = (input.Position - logoDragStart) * dragFactor
+
+            if math.abs(delta.X) < 1 and math.abs(delta.Y) < 1 then
+
+                return
+
+            end
+
+            local newPos = UDim2.new(
+
+                logoStartPos.X.Scale,
+
+                logoStartPos.X.Offset + delta.X,
+
+                logoStartPos.Y.Scale,
+
+                logoStartPos.Y.Offset + delta.Y
+
+            )
+
+            TweenService:Create(logoButton, TweenInfo.new(0.03), {Position = newPos}):Play()
+
+        end
+
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+
+            isDraggingLogo = false
+
+        end
+
+    end)
+
+end
+
+-- Chạy tạo UI
+
+createUI()
