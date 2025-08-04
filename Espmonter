@@ -1,0 +1,59 @@
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+
+local ESPEnabled = true -- Dùng cho toggle GUI nếu có
+
+-- Hàm tạo ESP cho NPC
+local function createNPCESP(npc)
+	if not ESPEnabled then return end
+	if not npc:IsA("Model") then return end
+	if npc:FindFirstChild("HumanoidRootPart") == nil or npc:FindFirstChild("Head") == nil then return end
+	if npc:FindFirstChild("Humanoid") == nil then return end
+	if npc:FindFirstChild("ESP_Box") or npc.Head:FindFirstChild("ESP_Name") then return end
+
+	local hrp = npc.HumanoidRootPart
+	local head = npc.Head
+
+	-- Box viền xanh quanh NPC
+	local highlight = Instance.new("Highlight", npc)
+	highlight.Name = "ESP_Box"
+	highlight.FillTransparency = 1
+	highlight.OutlineTransparency = 0
+	highlight.OutlineColor = Color3.fromRGB(0, 255, 0) -- Màu xanh
+
+	-- Tên trên đầu (màu xanh)
+	local billboard = Instance.new("BillboardGui", head)
+	billboard.Name = "ESP_Name"
+	billboard.Adornee = head
+	billboard.AlwaysOnTop = true
+	billboard.Size = UDim2.new(5, 0, 1, 0)
+	billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+
+	local label = Instance.new("TextLabel", billboard)
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.fromRGB(0, 255, 0) -- Màu xanh
+	label.TextStrokeTransparency = 0.5
+	label.Text = npc.Name
+	label.Font = Enum.Font.SourceSansBold
+	label.TextScaled = true
+
+	-- Cập nhật kích thước theo khoảng cách
+	RunService.RenderStepped:Connect(function()
+		if npc and npc:FindFirstChild("HumanoidRootPart") then
+			local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
+			billboard.Size = UDim2.new(math.clamp(10 / dist, 1, 5), 0, math.clamp(2 / dist, 0.5, 2), 0)
+		end
+	end)
+end
+
+-- Quét NPC có sẵn trong workspace
+for _, model in pairs(workspace:GetDescendants()) do
+	createNPCESP(model)
+end
+
+-- Theo dõi NPC mới thêm vào workspace
+workspace.DescendantAdded:Connect(function(desc)
+	task.wait(0.5)
+	createNPCESP(desc)
+end)
