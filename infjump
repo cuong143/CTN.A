@@ -1,0 +1,10 @@
+
+local UIS = game:GetService("UserInputService")
+local player = game.Players.LocalPlayer
+
+UIS.JumpRequest:Connect(function()
+    local char = player.Character
+    if char and char:FindFirstChildOfClass("Humanoid") then
+        char:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
