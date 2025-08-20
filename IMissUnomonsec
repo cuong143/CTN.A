@@ -18,7 +18,7 @@ local Window = Rayfield:CreateWindow({
 })
 
 -- Tạo tab chính
-local Tab = Window:CreateTab("🌀character")
+local Tab = Window:CreateTab("Character")
 
 -- Toggle Infjump
 local InfJumpEnabled = false
@@ -75,6 +75,18 @@ Tab:CreateButton({
     end,
 })
 
+-- Nút TpTool mới thêm vào
+Tab:CreateButton({
+    Name = "TpTool",
+    Callback = function()
+        local success, result = pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/cuong143/CTN.A/refs/heads/main/TpTool"))()
+        end)
+        if not success then
+            warn("Lỗi khi tải TpTool: " .. tostring(result))
+        end
+    end,
+})
+
 -- Toggle NoClip
 local NoClipEnabled = false
 local NoClipConnection
@@ -113,10 +125,10 @@ Tab:CreateToggle({
 })
 
 -- Tab hỗ trợ
-local SupportTab = Window:CreateTab("💢aim")
+local SupportTab = Window:CreateTab("Aim")
 
 SupportTab:CreateButton({
-    Name = "Bật Aimbot",
+    Name = "Aimbot",
     Callback = function()
         local success, result = pcall(function()
             loadstring(game:HttpGet("https://raw.githubusercontent.com/cuong143/CTN.A/refs/heads/main/Aim"))()
@@ -140,7 +152,7 @@ SupportTab:CreateButton({
 })
 
 -- Tab ESP
-local ESPTab = Window:CreateTab("👾 ESP")
+local ESPTab = Window:CreateTab(" ESP")
 
 local ESPEnabled = false
 local ESPConnections = {}
