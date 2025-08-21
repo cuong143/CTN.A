@@ -75,7 +75,7 @@ Tab:CreateButton({
     end,
 })
 
--- Nút TpTool mới thêm vào
+-- TpTool 
 Tab:CreateButton({
     Name = "TpTool",
     Callback = function()
@@ -124,8 +124,8 @@ Tab:CreateToggle({
     end,
 })
 
--- Tab hỗ trợ
-local SupportTab = Window:CreateTab("Aim")
+-- Tab 
+local SupportTab = Window:CreateTab("PVP")
 
 SupportTab:CreateButton({
     Name = "Aimbot",
@@ -149,6 +149,57 @@ SupportTab:CreateButton({
             warn("Lỗi khi tải aimplayer: " .. tostring(result))
         end
     end,
+})
+
+-- Toggle Hitbox
+SupportTab:CreateToggle({
+    Name = "Hitbox",
+    CurrentValue = false,
+    Flag = "HitboxToggle",
+    Callback = function(value)
+        _G.HitboxEnabled = value
+
+        if value then
+            spawn(function()
+                while _G.HitboxEnabled do
+                    for _, p in pairs(game.Players:GetPlayers()) do
+                        local h = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+                        if p ~= game.Players.LocalPlayer and h then
+                            h.Size = Vector3.new(_G.HitboxSize, _G.HitboxSize, _G.HitboxSize)
+                            h.Transparency = 0.5
+                            h.Material = Enum.Material.Neon
+                            h.CanCollide = false
+                        end
+                    end
+                    wait(0.1)
+                end
+            end)
+        else
+            -- Khi tắt, trả về giá trị mặc định
+            for _, p in pairs(game.Players:GetPlayers()) do
+                local h = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+                if h then
+                    h.Size = Vector3.new(2, 2, 1) -- size mặc định HumanoidRootPart
+                    h.Transparency = 0
+                    h.Material = Enum.Material.Plastic
+                    h.CanCollide = true
+                end
+            end
+        end
+    end
+})
+
+-- Slider điều chỉnh size hitbox
+SupportTab:CreateSlider({
+    Name = "Hitbox Size",
+    Range = {5, 500},
+    Increment = 5,
+    Suffix = "Stud",
+    CurrentValue = 100,
+    Flag = "HitboxSizeSlider",
+    Callback = function(value)
+        _G.HitboxSize = value
+    end
 })
 
 -- Tab ESP
